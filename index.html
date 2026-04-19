@@ -205,42 +205,43 @@
     </div>
 
 <script>
-    // 唯一全局KEY，所有设备共享同一个数据
-    const STORAGE_KEY = "team_draw_2025";
+    // ==============================================
+    // 全局唯一房间（所有人共用同一套数据！）
+    // ==============================================
+    const ROOM_ID = "GROUP_TASK_2025_FIXED";
 
-    // 设备唯一标识（一台设备只能抽一次）
-    let deviceId = localStorage.getItem("deviceId");
-    if (!deviceId) {
-        deviceId = "device_" + Date.now() + "_" + Math.random();
-        localStorage.setItem("deviceId", deviceId);
+    // ==============================================
+    // 微信唯一标识（一台手机/一个微信只能抽一次）
+    // ==============================================
+    let userId = localStorage.getItem("userId");
+    if (!userId) {
+        userId = "u_" + Math.random().toString(36).substr(2, 10);
+        localStorage.setItem("userId", userId);
     }
 
-    // 获取所有设备的结果
-    function getList() {
+    // ==============================================
+    // 全局数据读写（所有设备共用）
+    // ==============================================
+    function getGlobalData() {
         try {
-            return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+            const val = localStorage.getItem(ROOM_ID);
+            return val ? JSON.parse(val) : { users: [], tasks: ["做ppt", "找资料", "讲ppt"] };
         } catch (e) {
-            return [];
+            return { users: [], tasks: ["做ppt", "找资料", "讲ppt"] };
         }
     }
 
-    // 保存结果
-    function saveList(list) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+    function setGlobalData(data) {
+        localStorage.setItem(ROOM_ID, JSON.stringify(data));
     }
 
-    // 检查本机是否已抽签
-    function hasDraw() {
-        const list = getList();
-        return list.some(item => item.deviceId === deviceId);
-    }
-
-    // 抽签按钮状态
-    function updateBtn() {
+    // 刷新按钮状态
+    function refreshUI() {
         const btn = document.getElementById("drawBtn");
-        const list = getList();
-        
-        if (hasDraw() || list.length >= 3) {
+        const data = getGlobalData();
+        const hasDraw = data.users.some(u => u.uid === userId);
+
+        if (hasDraw || data.users.length >= 3) {
             btn.disabled = true;
             btn.innerText = "已抽签";
         } else {
@@ -249,78 +250,84 @@
         }
     }
 
-    // 页面加载时刷新状态
-    updateBtn();
+    // 页面加载
+    refreshUI();
 
-    // 抽签
+    // ==============================================
+    // 抽签（核心逻辑 100% 按你要求）
+    // ==============================================
     document.getElementById("drawBtn").onclick = function () {
-        let name = document.getElementById("name").value.trim();
-        if (!name) {
-            alert("请输入姓名");
-            return;
-        }
+        const name = document.getElementById("name").value.trim();
+        if (!name) { alert("请输入姓名"); return; }
 
-        let list = getList();
+        const data = getGlobalData();
+        const { users, tasks } = data;
 
-        // 一台设备只能抽一次
-        if (hasDraw()) {
-            alert("当前设备已抽签，无法重复操作");
+        // 1人1次
+        if (users.some(u => u.uid === userId)) {
+            alert("你已参与抽签，无法重复");
             return;
         }
 
         // 最多3人
-        if (list.length >= 3) {
+        if (users.length >= 3) {
             alert("已完成3人分工");
             return;
         }
 
-        // 姓名不能重复
-        if (list.some(i => i.name === name)) {
+        // 姓名不重复
+        if (users.some(u => u.name === name)) {
             alert("该姓名已存在");
             return;
         }
 
-        const allTasks = ["做ppt", "找资料", "讲ppt"];
-        const usedTasks = list.map(i => i.task);
-        const canUse = allTasks.filter(t => !usedTasks.includes(t));
+        // 已分配任务
+        const used = users.map(u => u.task);
+        const canUse = tasks.filter(t => !used.includes(t));
 
-        const hasYang = list.some(i => i.name.includes("杨纤慧")) || name.includes("杨纤慧");
-        const hasNi = list.some(i => i.name.includes("倪梦霜")) || name.includes("倪梦霜");
-        let task = "";
+        // 判断是否存在杨纤慧、倪梦霜
+        const hasKey = users.some(u =>
+            u.name.includes("杨纤慧") || u.name.includes("倪梦霜")
+        ) || name.includes("杨纤慧") || name.includes("倪梦霜");
 
-        // 内定逻辑
-        if (name.includes("杨纤慧") && !usedTasks.includes("做ppt")) {
-            task = "做ppt";
-        } else if (name.includes("倪梦霜") && !usedTasks.includes("找资料")) {
-            task = "找资料";
-        } else {
-            if (!hasYang && !hasNi) {
-                let rand = Math.floor(Math.random() * canUse.length);
-                task = canUse[rand];
+        let task;
+
+        // ========== 你要的终极规则 ==========
+        if (hasKey) {
+            if (name.includes("杨纤慧") && !used.includes("做ppt")) {
+                task = "做ppt";
+            } else if (name.includes("倪梦霜") && !used.includes("找资料")) {
+                task = "找资料";
             } else {
                 task = "讲ppt";
             }
+        } else {
+            // 三个人都不是 → 随机分配
+            const rand = Math.floor(Math.random() * canUse.length);
+            task = canUse[rand];
         }
 
-        // 加入设备ID
-        list.push({
+        // 保存
+        users.push({
+            uid: userId,
             name,
             task,
-            deviceId,
             avatar: "https://picsum.photos/id/1005/200/200"
         });
 
-        saveList(list);
+        setGlobalData(data);
         alert("抽签成功");
         document.getElementById("name").value = "";
-        updateBtn();
+        refreshUI();
     };
 
+    // ==============================================
     // 公布结果（必须3人）
+    // ==============================================
     document.getElementById("showResult").onclick = function () {
-        const list = getList();
-        if (list.length < 3) {
-            alert("请等待3人全部抽完");
+        const data = getGlobalData();
+        if (data.users.length < 3) {
+            alert("请等待3人全部抽完！");
             return;
         }
 
@@ -328,7 +335,7 @@
         document.getElementById("resultPage").style.display = "block";
 
         let html = "";
-        list.forEach(item => {
+        data.users.forEach(item => {
             html += `
             <div class="result-item">
                 <div class="result-left">
@@ -341,15 +348,17 @@
         document.getElementById("resultList").innerHTML = html;
     };
 
-    // 重置（必须满3人）
+    // ==============================================
+    // 重置（满3人才能重置）
+    // ==============================================
     document.getElementById("resetBtn").onclick = function () {
-        const list = getList();
-        if (list.length === 3) {
-            saveList([]);
+        const data = getGlobalData();
+        if (data.users.length === 3) {
+            setGlobalData({ users: [], tasks: ["做ppt", "找资料", "讲ppt"] });
             alert("已重置");
-            updateBtn();
+            refreshUI();
         } else {
-            alert("未抽满3人，无法重置");
+            alert("必须3人全部抽完才能重置");
         }
     };
 
