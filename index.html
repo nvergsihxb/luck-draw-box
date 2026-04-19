@@ -5,144 +5,137 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>分工抽签</title>
     <style>
-        *{margin:0;padding:0;box-sizing:border-box;font-family: "PingFang SC",sans-serif}
+        *{margin:0;padding:0;box-sizing:border-box;font-family:PingFang SC,Microsoft YaHei,sans-serif}
         body{background:#fff;padding:40px 20px;min-height:100vh}
-        .card{border:3px solid #FFC831;border-radius:20px;padding:50px 30px;max-width:400px;margin:0 auto}
+        .box{max-width:400px;margin:0 auto;border:3px solid #FFC831;border-radius:20px;padding:40px 25px}
         .title{text-align:center;font-size:24px;margin-bottom:30px}
-        .icon-box{display:flex;justify-content:center;margin-bottom:35px}
-        .icon{width:70px;height:70px;border:3px solid #FFC831;border-radius:12px;font-size:36px;color:#FFC831;display:flex;align-items:center;justify-content:center}
-        input{width:100%;height:44px;border:2px solid #eee;border-radius:10px;text-align:center;font-size:16px;margin-bottom:35px;outline:none}
-        .btn{width:160px;height:50px;background:#FFC831;border-radius:25px;font-size:18px;border:none;margin:0 auto;display:block}
-        .btn:disabled{background:#ccc}
-        .links{display:flex;justify-content:space-around;margin-top:25px}
-        .links span{color:#2B85E7;text-decoration:underline;cursor:pointer}
-        .footer{text-align:center;color:#999;font-size:13px;margin-top:40px}
+        input{width:100%;height:46px;border:2px solid #eee;border-radius:12px;text-align:center;font-size:16px;margin:20px 0;outline:none}
+        button{width:100%;height:50px;background:#FFC831;border:none;border-radius:25px;font-size:18px;margin:10px 0}
+        button:disabled{background:#eee;color:#999}
+        .tip{text-align:center;color:#666;margin:10px 0}
+        .link{display:flex;justify-content:space-around;margin-top:20px}
+        .link span{color:#2B85E7;text-decoration:underline}
+        .footer{text-align:center;color:#999;font-size:13px;margin-top:30px}
         .result{display:none;max-width:400px;margin:0 auto}
-        .result-title{text-align:center;font-size:22px;margin:20px 0}
-        .result-card{border:3px solid #FFC831;border-radius:20px;padding:20px}
-        .item{display:flex;justify-content:space-between;align-items:center;padding:15px 0;border-bottom:1px solid #f0f0f0}
-        .item:last-child{border-bottom:none}
-        .avatar{width:36px;height:36px;border-radius:50%}
+        .item{display:flex;justify-content:space-between;align-items:center;padding:15px;border-bottom:1px solid #f0f0f0}
         .task{color:#FF9500;font-weight:bold}
-        .back{width:100%;height:46px;background:#FFC831;border-radius:12px;border:none;margin-top:20px}
     </style>
 </head>
+
 <body>
-
-<div class="card" id="page1">
-    <div class="title">分工抽签</div>
-    <div class="icon-box"><div class="icon">?</div></div>
-    <input id="name" placeholder="请输入姓名">
-    <button class="btn" id="draw">抽签</button>
-    <div class="links">
-        <span id="show">公布结果</span>
-        <span id="reset">重置</span>
+    <div class="box" id="page1">
+        <div class="title">分工抽签</div>
+        <div class="tip">请输入姓名加入</div>
+        <input id="name" placeholder="输入你的姓名">
+        <button id="join">加入分组</button>
+        <div class="link">
+            <span id="show">公布结果</span>
+            <span id="reset">重置</span>
+        </div>
+        <div class="footer">ID:8881377<br>由腾讯云提供计算服务</div>
     </div>
-    <div class="footer">
-        <div>ID:8881377</div>
-        <div>由腾讯云提供计算服务</div>
-    </div>
-</div>
 
-<div class="result" id="page2">
-    <div class="result-title">分工结果</div>
-    <div class="result-card" id="list"></div>
-    <button class="back" onclick="back()">返回</button>
-</div>
+    <div class="result" id="page2">
+        <div class="title">最终分工结果</div>
+        <div class="box" id="resultBox"></div>
+        <button onclick="back()">返回</button>
+    </div>
 
 <script>
-    // ==============================================
-    // 全局唯一数据（所有人共用同一个！）
-    // ==============================================
+    // 全局唯一数据
+    const KEY = "ALL_USER_DATA";
     const TASKS = ["做ppt", "找资料", "讲ppt"];
-    const ROOM = "MY_FINAL_TEAM";
 
-    // 用户唯一ID（一人一次，换设备=新用户）
+    // 设备唯一ID（一人一次）
     let UID = localStorage.getItem("UID");
-    if (!UID) { UID = "u_" + Math.random().toString(36).substr(2); localStorage.setItem("UID", UID); }
+    if (!UID) { UID = "u" + Math.random().toString(36).slice(2); localStorage.setItem("UID", UID); }
 
-    // 读取全局数据
-    function get() {
-        try { return JSON.parse(localStorage.getItem(ROOM)) || { users: [] }; }
-        catch (e) { return { users: [] }; }
+    // 读取所有用户
+    function getUsers() {
+        try { return JSON.parse(localStorage.getItem(KEY)) || []; }
+        catch (e) { return []; }
     }
 
-    // 保存全局数据
-    function set(d) { localStorage.setItem(ROOM, JSON.stringify(d)); }
+    // 保存
+    function setUsers(list) { localStorage.setItem(KEY, JSON.stringify(list)); }
 
     // 刷新按钮
     function refresh() {
-        const d = get();
-        const btn = document.getElementById("draw");
-        const me = d.users.find(u => u.uid === UID);
-        btn.disabled = me || d.users.length >= 3;
-        btn.innerText = btn.disabled ? "已抽签" : "抽签";
+        const list = getUsers();
+        const btn = document.getElementById("join");
+        const me = list.find(i => i.uid === UID);
+        btn.disabled = me || list.length >= 3;
+        btn.innerText = btn.disabled ? "已加入" : "确认加入";
     }
 
     refresh();
 
-    // ==============================================
-    // 抽签（一人一次，多机联动）
-    // ==============================================
-    document.getElementById("draw").onclick = function () {
+    // 加入（只加入，不抽签）
+    document.getElementById("join").onclick = function () {
         const name = document.getElementById("name").value.trim();
         if (!name) return alert("请输入姓名");
 
-        const d = get();
-        if (d.users.find(u => u.uid === UID)) return alert("你已抽签");
-        if (d.users.length >= 3) return alert("已满3人");
-        if (d.users.find(u => u.name === name)) return alert("姓名重复");
+        let list = getUsers();
+        if (list.find(i => i.uid === UID)) return alert("你已加入");
+        if (list.length >= 3) return alert("已满3人");
+        if (list.find(i => i.name === name)) return alert("姓名重复");
 
-        const used = d.users.map(u => u.task);
-        const canUse = TASKS.filter(t => !used.includes(t));
-        const hasKey = d.users.some(u => u.name.includes("杨纤慧") || u.name.includes("倪梦霜"))
-                        || name.includes("杨纤慧") || name.includes("倪梦霜");
+        list.push({ uid: UID, name });
+        setUsers(list);
+        alert("加入成功！等待其他人...");
 
-        let task;
-        if (hasKey) {
-            if (name.includes("杨纤慧") && !used.includes("做ppt")) task = "做ppt";
-            else if (name.includes("倪梦霜") && !used.includes("找资料")) task = "找资料";
-            else task = "讲ppt";
-        } else {
-            task = canUse[Math.floor(Math.random() * canUse.length)];
-        }
-
-        d.users.push({ uid: UID, name, task });
-        set(d);
-        alert("抽签成功");
-        document.getElementById("name").value = "";
+        // 满3人 → 系统自动分配任务
+        if (list.length === 3) autoAssign();
         refresh();
     };
 
-    // ==============================================
+    // ======================
+    // 系统自动分配（核心！）
+    // ======================
+    function autoAssign() {
+        let list = getUsers();
+        let tasks = [...TASKS];
+
+        // 内定人员
+        let y = list.find(i => i.name.includes("杨纤慧"));
+        let n = list.find(i => i.name.includes("倪梦霜"));
+
+        if (y || n) {
+            if (y) { y.task = "做ppt"; tasks = tasks.filter(t => t !== "做ppt"); }
+            if (n) { n.task = "找资料"; tasks = tasks.filter(t => t !== "找资料"); }
+            list.forEach(i => { if (!i.task) i.task = tasks[0]; });
+        } 
+        // 无内定 → 随机
+        else {
+            list.forEach(i => {
+                let r = Math.floor(Math.random() * tasks.length);
+                i.task = tasks[r];
+                tasks.splice(r, 1);
+            });
+        }
+
+        setUsers(list);
+    }
+
     // 公布结果（必须3人）
-    // ==============================================
     document.getElementById("show").onclick = function () {
-        const d = get();
-        if (d.users.length < 3) return alert("请等待3人全部抽完！");
+        let list = getUsers();
+        if (list.length < 3) return alert("必须3人全部加入才能公布！");
 
         document.getElementById("page1").style.display = "none";
         document.getElementById("page2").style.display = "block";
 
         let html = "";
-        d.users.forEach(u => {
-            html += `
-            <div class="item">
-                <div style="display:flex;align-items:center;gap:12px">
-                    <img class="avatar" src="https://picsum.photos/id/1005/200/200">
-                    <div>${u.name}</div>
-                </div>
-                <div class="task">${u.task}</div>
-            </div>`;
+        list.forEach(i => {
+            html += `<div class="item"><div>${i.name}</div><div class="task">${i.task}</div></div>`;
         });
-        document.getElementById("list").innerHTML = html;
+        document.getElementById("resultBox").innerHTML = html;
     };
 
     // 重置
     document.getElementById("reset").onclick = function () {
-        const d = get();
-        if (d.users.length === 3) { set({ users: [] }); alert("已重置"); refresh(); }
-        else alert("需3人抽完才可重置");
+        if (getUsers().length === 3) { setUsers([]); alert("已重置"); refresh(); }
+        else alert("必须3人完成才能重置");
     };
 
     function back() {
