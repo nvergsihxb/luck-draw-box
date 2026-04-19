@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分工</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+        }
+
+        body {
+            background: #fff;
+            padding: 40px 20px;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        .card {
+            border: 3px solid #FFC831;
+            border-radius: 20px;
+            padding: 50px 30px;
+            background: #fff;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .title {
+            text-align: center;
+            font-size: 24px;
+            margin-bottom: 30px;
+            color: #333;
+        }
+
+        .icon-box {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 35px;
+        }
+
+        .icon {
+            width: 70px;
+            height: 70px;
+            border: 3px solid #FFC831;
+            border-radius: 12px;
+            font-size: 36px;
+            color: #FFC831;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .input-box {
+            margin-bottom: 35px;
+        }
+
+        #name {
+            width: 100%;
+            height: 44px;
+            border: 2px solid #eee;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 16px;
+            outline: none;
+        }
+
+        .btn-box {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 25px;
+        }
+
+        #drawBtn {
+            width: 160px;
+            height: 50px;
+            background: #FFC831;
+            border-radius: 25px;
+            font-size: 18px;
+            color: #000;
+            border: none;
+            cursor: pointer;
+        }
+
+        .links {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+        }
+
+        .links span {
+            font-size: 15px;
+            color: #2B85E7;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        .footer {
+            text-align: center;
+            color: #999;
+            font-size: 13px;
+            position: absolute;
+            bottom: 30px;
+            left: 0;
+            width: 100%;
+        }
+
+        /* 结果页样式 */
+        .result-page {
+            display: none;
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .result-title {
+            text-align: center;
+            font-size: 22px;
+            margin-bottom: 20px;
+        }
+
+        .result-card {
+            border: 3px solid #FFC831;
+            border-radius: 20px;
+            padding: 20px;
+            background: #fff;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .task {
+            color: #FF9500;
+            font-weight: bold;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 40px 0;
+            color: #999;
+        }
+
+        .back-btn {
+            margin-top: 20px;
+            width: 100%;
+            height: 46px;
+            background: #FFC831;
+            border-radius: 12px;
+            font-size: 16px;
+            border: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 抽签主页 -->
+    <div class="main-page" id="mainPage">
+        <div class="card">
+            <div class="title">分工</div>
+            <div class="icon-box">
+                <div class="icon">?</div>
+            </div>
+            <div class="input-box">
+                <input type="text" id="name" placeholder="请输入姓名">
+            </div>
+            <div class="btn-box">
+                <button id="drawBtn">抽签</button>
+            </div>
+            <div class="links">
+                <span id="showResult">公布结果</span>
+                <span id="resetBtn">重置</span>
+            </div>
+        </div>
+
+        <div class="footer">
+            <div>ID:8881377</div>
+            <div style="margin-top:5px">由腾讯云提供计算服务</div>
+        </div>
+    </div>
+
+    <!-- 结果页面 -->
+    <div class="result-page" id="resultPage">
+        <div class="result-title">分工结果</div>
+        <div class="result-card" id="resultList"></div>
+        <button class="back-btn" id="backBtn">返回</button>
+    </div>
+
+    <script>
+        let resultList = [];
+
+        // 抽签
+        document.getElementById('drawBtn').onclick = function () {
+            let name = document.getElementById('name').value.trim();
+            if (!name) {
+                alert('请输入姓名');
+                return;
+            }
+            if (resultList.length >= 3) {
+                alert('已完成3人分工');
+                return;
+            }
+            if (resultList.some(item => item.name === name)) {
+                alert('该人员已抽签');
+                return;
+            }
+
+            const allTasks = ['做ppt', '找资料', '讲ppt'];
+            const usedTasks = resultList.map(i => i.task);
+            const canUse = allTasks.filter(t => !usedTasks.includes(t));
+            
+            const hasYang = resultList.some(i => i.name.includes('杨纤慧')) || name.includes('杨纤慧');
+            const hasNi = resultList.some(i => i.name.includes('倪梦霜')) || name.includes('倪梦霜');
+            let task = '';
+
+            if (name.includes('杨纤慧') && !usedTasks.includes('做ppt')) {
+                task = '做ppt';
+            } else if (name.includes('倪梦霜') && !usedTasks.includes('找资料')) {
+                task = '找资料';
+            } else {
+                if (!hasYang && !hasNi) {
+                    let rand = Math.floor(Math.random() * canUse.length);
+                    task = canUse[rand];
+                } else {
+                    task = '讲ppt';
+                }
+            }
+
+            resultList.push({
+                name,
+                task,
+                avatar: 'https://picsum.photos/id/1005/200/200'
+            });
+
+            alert('抽签成功');
+            document.getElementById('name').value = '';
+        };
+
+        // 公布结果
+        document.getElementById('showResult').onclick = function () {
+            if (resultList.length < 3) {
+                alert('请等待3人全部抽完');
+                return;
+            }
+            document.getElementById('mainPage').style.display = 'none';
+            document.getElementById('resultPage').style.display = 'block';
+
+            let html = '';
+            if (resultList.length === 0) {
+                html = '<div class="empty">暂无结果</div>';
+            } else {
+                resultList.forEach(item => {
+                    html += `
+                        <div class="result-item">
+                            <div class="result-left">
+                                <img class="avatar" src="${item.avatar}">
+                                <div>${item.name}</div>
+                            </div>
+                            <div class="task">${item.task}</div>
+                        </div>
+                    `;
+                });
+            }
+            document.getElementById('resultList').innerHTML = html;
+        };
+
+        // 重置
+        document.getElementById('resetBtn').onclick = function () {
+            if (resultList.length === 3) {
+                resultList = [];
+                alert('已重置');
+            } else {
+                alert('未抽满3人，无法重置');
+            }
+        };
+
+        // 返回
+        document.getElementById('backBtn').onclick = function () {
+            document.getElementById('resultPage').style.display = 'none';
+            document.getElementById('mainPage').style.display = 'block';
+        };
+    </script>
+</body>
+</html>
